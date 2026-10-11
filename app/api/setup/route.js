@@ -7,18 +7,38 @@ export const dynamic = 'force-dynamic';
 
 // Visit /api/setup?token=YOUR_SETUP_TOKEN once after deploying.
 export async function GET(req) {
-  const token = new URL(req.url).searchParams.get('token');
-  if (!process.env.SETUP_TOKEN || token !== process.env.SETUP_TOKEN) return json({ error: 'Invalid setup token' }, 403);
-  await q(SCHEMA);
-  const { ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME } = process.env;
-  const has = await q("select 1 from users where role='admin' limit 1");
-  let admin = 'already exists';
-  if (!has.rowCount && ADMIN_EMAIL && ADMIN_PASSWORD) {
-    await q('insert into users(name,email,password_hash,role) values($1,$2,$3,$4)', [
-      ADMIN_NAME || 'Admin', ADMIN_EMAIL.toLowerCase(), await bcrypt.hash(ADMIN_PASSWORD, 10), 'admin',
+  try {
+    const token = new URL(req.url).searchParams.get('token');
+    if (!process.env.SETUP_TOKEN || token !== process.env.SETUP_TOKEN) {
+      return json({ error: 'Invalid setup token' }, 403);
+    }
+    await q(SCHEMA);
+    const { ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME } = process.env;
+    let admin = 'no admin credentials set';
+    if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+      const email = ADMIN_EMAIL.toLowerCase().trim();
+      const pw = ADMIN_PASSWORD.trim();
+      const hash = await bcrypt.hash(pw, 10);
+      const existing = await q("select id, email from users where role='admin' or email=$1 limit 1", [email]);
+      if (existing.rowCount) {
+        await q('update users set name=$1, email=$2, password_hash=$3, role=$4 where id=$5', [
+          ADMIN_NAME || 'Admin', email, hash, 'admin', existing.rows[0].id,
+        ]);
+        admin = 'updated admin credentials for: ' + email;
+      } else {
+        await q('insert into users(name,email,password_hash,role) values($1,$2,$3,$4)', [
+          ADMIN_NAME || 'Admin', email, hash, 'admin',
+        ]);
+        admin = 'created: ' + email;
+      }
+    }
+    await q('insert into formats(name, config) values($1,$2) on conflict (name) do nothing', [
+      DEFAULT_FORMAT.name, JSON.stringify(DEFAULT_FORMAT.config),
     ]);
-    admin = 'created: ' + ADMIN_EMAIL;
+    return json({ ok: true, tables: 'ready', admin });
+  } catch (err) {
+    console.error('Setup error:', err);
+    return json({ error: 'Setup failed: ' + (err.message || '') }, 500);
   }
-  await q('insert into formats(name, config) values($1,$2) on conflict (name) do nothing', [DEFAULT_FORMAT.name, DEFAULT_FORMAT.config]);
-  return json({ ok: true, tables: 'ready', admin });
 }
+

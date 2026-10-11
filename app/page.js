@@ -9,13 +9,31 @@ export default function Login() {
 
   async function submit(e) {
     e.preventDefault();
-    setBusy(true); setErr('');
-    const f = new FormData(e.target);
-    const res = await fetch('/api/login', { method: 'POST', body: JSON.stringify({ email: f.get('email'), password: f.get('password') }) });
-    const data = await res.json();
-    setBusy(false);
-    if (!res.ok) return setErr(data.error);
-    router.push(data.role === 'admin' ? '/admin' : '/faculty');
+    setBusy(true);
+    setErr('');
+    try {
+      const f = new FormData(e.target);
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: f.get('email'), password: f.get('password') }),
+      });
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: `Server error (${res.status})` };
+      }
+      if (!res.ok) {
+        setErr(data.error || 'Login failed. Please check your credentials.');
+        return;
+      }
+      router.push(data.role === 'admin' ? '/admin' : '/faculty');
+    } catch (err) {
+      setErr(err.message || 'Connection error. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
