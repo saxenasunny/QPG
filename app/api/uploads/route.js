@@ -37,9 +37,16 @@ export async function POST(req) {
   const subj = (await q('select * from subjects where id=$1', [subjectId])).rows[0];
   if (!subj) return json({ error: 'Choose a subject.' }, 400);
 
-  const used = (await q('select set_no from uploads where faculty_id=$1 and subject_id=$2', [s.uid, subjectId])).rows.map((r) => r.set_no);
-  const setNo = [1, 2, 3].find((n) => !used.includes(n));
-  if (!setNo) return json({ error: `You already have 3 sets for ${subj.code}. Delete one to upload another.` }, 409);
+  const assigned = await q('select 1 from faculty_subjects where faculty_id=$1 and subject_id=$2', [s.uid, subjectId]);
+  if (!assigned.rowCount) {
+    return json({ error: `Subject ${subj.code} is not assigned to you. You can only submit questions for subjects assigned to you by the admin.` }, 403);
+  }
+
+  const alreadySubmitted = await q('select id from uploads where faculty_id=$1 and subject_id=$2', [s.uid, subjectId]);
+  if (alreadySubmitted.rowCount >= 1) {
+    return json({ error: `You have already submitted your set for ${subj.code}. You can submit only 1 set per assigned subject. Delete your existing submission below if you need to re-upload.` }, 409);
+  }
+  const setNo = 1;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   let parsed, format = null;

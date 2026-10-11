@@ -42,7 +42,13 @@ export default function Faculty() {
       <header className="top"><strong>Question Paper Generator</strong><span>{me?.name} <button onClick={logout} style={{ marginLeft: 12 }}>Sign out</button></span></header>
       <main className="wrap">
         <h1>Submit questions</h1>
-        <p className="muted">You can submit up to 3 sets for each subject. Questions are stored for paper setting only; you and others cannot browse them afterwards.</p>
+        <p className="muted">You can submit 1 set of questions for each of your assigned subjects. Questions are stored for paper setting only; you and others cannot browse them afterwards.</p>
+
+        {subjects.length === 0 && (
+          <div className="msg warn" role="alert">
+            No subjects have been assigned to your account yet. Please contact your exam cell administrator to assign subjects.
+          </div>
+        )}
 
         <form className="card" onSubmit={submit}>
           <h2>New upload</h2>
@@ -53,9 +59,16 @@ export default function Faculty() {
           <div className="row">
             <div>
               <label htmlFor="subject_id">Subject</label>
-              <select id="subject_id" name="subject_id" required defaultValue="">
-                <option value="" disabled>Select subject code</option>
-                {subjects.map((s) => <option key={s.id} value={s.id}>{s.code} – {s.name} ({used(s.code)}/3 sets)</option>)}
+              <select id="subject_id" name="subject_id" required defaultValue="" disabled={subjects.length === 0}>
+                <option value="" disabled>{subjects.length === 0 ? 'No assigned subjects' : 'Select assigned subject'}</option>
+                {subjects.map((s) => {
+                  const submitted = used(s.code) >= 1;
+                  return (
+                    <option key={s.id} value={s.id} disabled={submitted}>
+                      {s.code} – {s.name} {submitted ? '✓ (Submitted)' : '(Pending)'}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             {kind === 'paper' && (

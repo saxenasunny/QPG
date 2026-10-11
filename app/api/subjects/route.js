@@ -3,8 +3,21 @@ import { requireRole, json, denied } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  if (!(await requireRole())) return denied();
-  return json((await q('select id, code, name, co_count from subjects order by code')).rows);
+  const s = await requireRole();
+  if (!s) return denied();
+  if (s.role === 'admin') {
+    return json((await q('select id, code, name, co_count from subjects order by code')).rows);
+  }
+  // Faculty only gets assigned subjects
+  const res = await q(
+    `select s.id, s.code, s.name, s.co_count
+       from subjects s
+       join faculty_subjects fs on fs.subject_id = s.id
+      where fs.faculty_id = $1
+      order by s.code`,
+    [s.uid]
+  );
+  return json(res.rows);
 }
 export async function POST(req) {
   if (!(await requireRole('admin'))) return denied();

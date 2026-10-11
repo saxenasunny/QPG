@@ -289,19 +289,49 @@ function Subjects({ subjects, reload }) {
   );
 }
 
-function Faculty({ faculty, reload }) {
+function Faculty({ faculty, subjects, reload }) {
   const [msg, setMsg] = useState(null);
+  const [editingFaculty, setEditingFaculty] = useState(null);
+  const [selectedSubs, setSelectedSubs] = useState([]);
+
   async function submit(e) {
     e.preventDefault();
     const f = new FormData(e.target);
-    const res = await api('/api/faculty', { method: 'POST', body: JSON.stringify(Object.fromEntries(f.entries())) });
-    setMsg(res.ok ? { type: 'ok', text: 'Faculty account created. Share the password with them securely.' } : { type: 'err', text: res.data.error });
+    const subject_ids = f.getAll('subject_ids').map(Number);
+    const body = {
+      name: f.get('name'),
+      email: f.get('email'),
+      password: f.get('password'),
+      subject_ids,
+    };
+    const res = await api('/api/faculty', { method: 'POST', body: JSON.stringify(body) });
+    setMsg(res.ok ? { type: 'ok', text: 'Faculty account created with assigned subjects. Share the password with them securely.' } : { type: 'err', text: res.data.error });
     if (res.ok) { e.target.reset(); reload(); }
   }
+
+  function startEdit(u) {
+    setEditingFaculty(u);
+    setSelectedSubs((u.assigned_subjects || []).map((s) => s.id));
+  }
+
+  async function saveAssignments(e) {
+    e.preventDefault();
+    const res = await api('/api/faculty', {
+      method: 'PUT',
+      body: JSON.stringify({ faculty_id: editingFaculty.id, subject_ids: selectedSubs }),
+    });
+    setMsg(res.ok ? { type: 'ok', text: `Assigned subjects updated for ${editingFaculty.name}.` } : { type: 'err', text: res.data.error });
+    if (res.ok) {
+      setEditingFaculty(null);
+      reload();
+    }
+  }
+
   async function remove(u) {
     if (!confirm(`Delete ${u.name} and all questions they uploaded?`)) return;
     await api('/api/faculty?id=' + u.id, { method: 'DELETE' }); reload();
   }
+
   return (
     <>
       <form className="card" onSubmit={submit}>
@@ -311,13 +341,78 @@ function Faculty({ faculty, reload }) {
           <div><label htmlFor="u_email">Email</label><input id="u_email" name="email" type="email" required /></div>
           <div><label htmlFor="u_pw">Temporary password</label><input id="u_pw" name="password" type="text" minLength={8} required /></div>
         </div>
+
+        <label style={{ marginTop: '0.8rem', fontWeight: 600 }}>Assign subjects (optional):</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.8rem' }}>
+          {subjects.map((s) => (
+            <label key={s.id} style={{ display: 'inline-flex', alignItems: 'center', margin: 0, padding: '0.35rem 0.65rem', border: '1px solid var(--line)', borderRadius: 4, cursor: 'pointer', background: '#fff' }}>
+              <input type="checkbox" name="subject_ids" value={s.id} />
+              {s.code} – {s.name}
+            </label>
+          ))}
+          {subjects.length === 0 && <span className="muted">No subjects created yet. Add subjects in the Subjects tab first.</span>}
+        </div>
+
         <Msg m={msg} />
         <button>Create account</button>
       </form>
+
+      {editingFaculty && (
+        <form className="card" onSubmit={saveAssignments} style={{ border: '2px solid var(--ink)' }}>
+          <h3>Assign subjects to {editingFaculty.name}</h3>
+          <p className="muted">Faculty can only submit 1 set of questions for subjects assigned to them.</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', margin: '0.8rem 0' }}>
+            {subjects.map((s) => {
+              const checked = selectedSubs.includes(s.id);
+              return (
+                <label key={s.id} style={{ display: 'inline-flex', alignItems: 'center', margin: 0, padding: '0.35rem 0.65rem', border: '1px solid var(--line)', borderRadius: 4, cursor: 'pointer', background: checked ? '#eef8f2' : '#fff' }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedSubs([...selectedSubs, s.id]);
+                      else setSelectedSubs(selectedSubs.filter((id) => id !== s.id));
+                    }}
+                  />
+                  <strong>{s.code}</strong> – {s.name}
+                </label>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="submit">Save assignments</button>
+            <button type="button" className="ghost" onClick={() => setEditingFaculty(null)}>Cancel</button>
+          </div>
+        </form>
+      )}
+
       <div className="card scroll">
+        <h2>Faculty accounts</h2>
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th></th></tr></thead>
-          <tbody>{faculty.map((u) => <tr key={u.id}><td>{u.name}</td><td>{u.email}</td><td><button className="danger" onClick={() => remove(u)}>Delete</button></td></tr>)}</tbody>
+          <thead><tr><th>Name</th><th>Email</th><th>Assigned Subjects</th><th></th></tr></thead>
+          <tbody>{faculty.map((u) => (
+            <tr key={u.id}>
+              <td>{u.name}</td>
+              <td>{u.email}</td>
+              <td>
+                {(u.assigned_subjects || []).length === 0 ? (
+                  <span className="muted">None assigned</span>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {(u.assigned_subjects || []).map((s) => (
+                      <span key={s.id} className="chip" title={s.name}>
+                        {s.code}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </td>
+              <td style={{ whiteSpace: 'nowrap' }}>
+                <button className="ghost" style={{ marginRight: 6 }} onClick={() => startEdit(u)}>Assign subjects</button>
+                <button className="danger" onClick={() => remove(u)}>Delete</button>
+              </td>
+            </tr>
+          ))}</tbody>
         </table>
         {faculty.length === 0 && <p className="muted">No faculty accounts yet.</p>}
       </div>
