@@ -42,11 +42,18 @@ export async function POST(req) {
     return json({ error: `Subject ${subj.code} is not assigned to you. You can only submit questions for subjects assigned to you by the admin.` }, 403);
   }
 
-  const alreadySubmitted = await q('select id from uploads where faculty_id=$1 and subject_id=$2', [s.uid, subjectId]);
-  if (alreadySubmitted.rowCount >= 1) {
-    return json({ error: `You have already submitted your set for ${subj.code}. You can submit only 1 set per assigned subject. Delete your existing submission below if you need to re-upload.` }, 409);
+  let setNo = 1;
+  if (kind === 'paper') {
+    const existingPaper = await q('select id from uploads where faculty_id=$1 and subject_id=$2 and kind=$3', [s.uid, subjectId, 'paper']);
+    if (existingPaper.rowCount >= 1) {
+      return json({ error: `You have already submitted a ready question paper for ${subj.code}. Only one question paper set is permitted per assigned subject. Delete your existing paper set below if you need to re-upload.` }, 409);
+    }
+    setNo = 1;
+  } else {
+    // Question banks can be uploaded regularly to grow the pool
+    const lastBank = await q('select coalesce(max(set_no), 0) as max_set from uploads where faculty_id=$1 and subject_id=$2 and kind=$3', [s.uid, subjectId, 'bank']);
+    setNo = Number(lastBank.rows[0].max_set) + 1;
   }
-  const setNo = 1;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   let parsed, format = null;

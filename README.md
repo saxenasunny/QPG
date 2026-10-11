@@ -50,13 +50,13 @@ In Vercel **Settings > Environment Variables**, ensure these variables are added
 1. Admin > **Subjects**: add the subject code, name and number of COs.
 2. Admin > **Faculty**: create faculty accounts and assign designated subject codes to each faculty user.
 3. Admin > **Formats**: check or add paper formats (section, questions, marks, allowed BT levels, OR, optional exact mix such as `1:1,2:2,3:1`).
-4. Faculty log in and see only their assigned subjects. Each faculty can submit **1 set** of questions (question bank .xlsx or ready paper .docx).
+4. Faculty log in and see only their assigned subjects. Faculty can upload question banks (.xlsx) regularly over time to grow the pool, but ready question papers (.docx) can only be submitted once (1 set per assigned subject).
 5. Admin > **Generate**: choose subject, format, source, number of sets and unlock time. Papers appear under **Papers** and can be downloaded as Word once unlocked.
 
 ## Rules built in
 
 - **Assigned subjects only**: Faculty can only submit questions for subjects assigned to them by an admin.
-- **1 set per faculty per subject**: Each faculty can submit exactly 1 set of questions for each assigned subject.
+- **Upload limits**: Faculty can upload multiple question bank batches (.xlsx) regularly to continuously expand the subject pool; ready question papers (.docx) are restricted to exactly 1 set per faculty per assigned subject.
 - Excel and Word uploads are checked before saving: BT level 1 to 6, CO within the subject's COs, section and question counts against the chosen format, course code against the chosen subject. Errors list the exact row or question.
 - Exact duplicate questions are skipped; near-duplicates are flagged.
 - Random selection uses a cryptographic random generator. It prefers questions not used before, spreads questions across faculty, tries to cover every CO, and never puts near-identical questions in one paper.
