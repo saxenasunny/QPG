@@ -4,19 +4,38 @@ Faculty submit questions (Excel bank or a ready ETE paper in Word). The admin bu
 (sections, BT levels, marks). The paper is picked at random on the server, encrypted, and sealed until an unlock time.
 Nobody can read it before then, including the admin who made it.
 
-## Deploy on Vercel
+## Deploy on Vercel with Supabase
 
-1. Push this folder to a GitHub repository and import it in Vercel (framework: Next.js, no build settings to change).
-2. In the Vercel project, open **Storage** and add **Neon (Postgres)**. It adds `DATABASE_URL` for you.
-   Supabase or any Postgres connection string also works; set it as `DATABASE_URL`.
-3. In **Settings > Environment Variables** add the values from `.env.example`:
-   - `AUTH_SECRET`: any long random string
-   - `PAPER_ENC_KEY`: run `openssl rand -hex 32`. **Back this up.** Without it, sealed papers cannot be opened.
-   - `SETUP_TOKEN`, `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `INSTITUTE_NAME`
-   - `REQUIRED_APPROVALS`: `0` for none, `1` to need one other admin's approval before download
-4. Deploy, then open `https://YOUR-APP.vercel.app/api/setup?token=YOUR_SETUP_TOKEN` once.
-   This creates the tables, your admin account and the sample format `ETE-60 (BCA/MCA)`.
-5. Delete `SETUP_TOKEN` from the environment variables afterwards (this switches the setup page off), then sign in.
+### 1. Set Up Supabase Database
+1. Create a project at [supabase.com](https://supabase.com).
+2. Go to **Project Settings > Database**.
+3. Under **Connection string**, select **URI** and choose **Transaction Pooler** (recommended for Vercel serverless, port 6543) or **Session Pooler** (port 5432).
+4. Copy the connection string. Replace `[YOUR-PASSWORD]` with your actual database password.
+   Example:
+   `postgresql://postgres.yourprojectref:yourpassword@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require`
+
+### 2. Configure Environment Variables in Vercel
+1. In your Vercel project dashboard, go to **Settings > Environment Variables**.
+2. Add the following variables:
+   - `DATABASE_URL`: Your Supabase connection string from above.
+   - `AUTH_SECRET`: A random 32+ character string (e.g. run `openssl rand -base64 32`).
+   - `PAPER_ENC_KEY`: 64 hex characters (32 bytes) for AES-256-GCM paper encryption. Run `openssl rand -hex 32`. **Back this up securely** (without it, generated papers cannot be decrypted).
+   - `SETUP_TOKEN`: A secret token of your choice to protect `/api/setup` (e.g. `setup_sec_98765`).
+   - `ADMIN_NAME`: Your exam cell administrator name (e.g. `Exam Controller`).
+   - `ADMIN_EMAIL`: Admin login email (e.g. `admin@college.edu`).
+   - `ADMIN_PASSWORD`: Admin login password (at least 8 characters).
+   - `INSTITUTE_NAME`: Name of your university / institution printed on question papers.
+   - `REQUIRED_APPROVALS`: Number of other admins required to approve a paper before download (`0` for none, `1` for 1 approval).
+
+### 3. Deploy & Initialize Database
+1. Deploy the project on Vercel.
+2. Once deployed, open the setup endpoint in your browser:
+   `https://YOUR-APP.vercel.app/api/setup?token=YOUR_SETUP_TOKEN`
+3. You will receive a JSON response: `{"ok":true,"tables":"ready","admin":"created: admin@college.edu"}`.
+   This automatically creates all required tables (`users`, `subjects`, `formats`, `uploads`, `questions`, `generated_papers`, `paper_approvals`, `audit_log`) and the default `ETE-60 (BCA/MCA)` paper format in your Supabase database.
+4. **Security step**: Go back to Vercel **Settings > Environment Variables**, delete `SETUP_TOKEN`, and redeploy. This deactivates the setup endpoint.
+5. Log in at `https://YOUR-APP.vercel.app` using your admin credentials.
+
 
 ## First use
 
