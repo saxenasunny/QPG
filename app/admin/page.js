@@ -255,6 +255,9 @@ function Formats({ formats, reload }) {
 
 function Subjects({ subjects, reload }) {
   const [msg, setMsg] = useState(null);
+  const [bulkMsg, setBulkMsg] = useState(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   async function submit(e) {
     e.preventDefault();
     const f = new FormData(e.target);
@@ -262,6 +265,23 @@ function Subjects({ subjects, reload }) {
     setMsg(res.ok ? { type: 'ok', text: 'Subject added.' } : { type: 'err', text: res.data.error });
     if (res.ok) { e.target.reset(); reload(); }
   }
+
+  async function submitBulk(e) {
+    e.preventDefault();
+    setBulkBusy(true); setBulkMsg(null);
+    const form = e.target;
+    const res = await api('/api/subjects/bulk', { method: 'POST', body: new FormData(form) });
+    setBulkBusy(false);
+    if (!res.ok) return setBulkMsg({ type: 'err', text: res.data.error, list: res.data.details });
+    setBulkMsg({
+      type: res.data.warnings?.length ? 'warn' : 'ok',
+      text: `Import complete: ${res.data.inserted} subject(s) added, ${res.data.skipped} skipped.`,
+      list: res.data.warnings,
+    });
+    form.reset();
+    reload();
+  }
+
   async function remove(s) {
     if (!confirm(`Delete ${s.code} and every question under it?`)) return;
     await api('/api/subjects?id=' + s.id, { method: 'DELETE' }); reload();
@@ -278,7 +298,27 @@ function Subjects({ subjects, reload }) {
         <Msg m={msg} />
         <button>Add subject</button>
       </form>
+
+      <form className="card" onSubmit={submitBulk}>
+        <h2>Bulk import subjects</h2>
+        <p className="muted">
+          Upload an Excel (.xlsx) or CSV file with <strong>Subject Code</strong>, <strong>Subject Name</strong>, and <strong>CO Count</strong>.{' '}
+          <a href="/subjects-template.xlsx" download>Download template (.xlsx)</a>
+        </p>
+        <div className="row" style={{ alignItems: 'flex-end' }}>
+          <div>
+            <label htmlFor="bulk_sub_file">Choose file (.xlsx or .csv)</label>
+            <input id="bulk_sub_file" name="file" type="file" required accept=".xlsx, .csv" />
+          </div>
+          <div>
+            <button disabled={bulkBusy}>{bulkBusy ? 'Importing…' : 'Upload & import subjects'}</button>
+          </div>
+        </div>
+        <Msg m={bulkMsg} />
+      </form>
+
       <div className="card scroll">
+        <h2>Subjects ({subjects.length})</h2>
         <table>
           <thead><tr><th>Code</th><th>Name</th><th>COs</th><th></th></tr></thead>
           <tbody>{subjects.map((s) => <tr key={s.id}><td>{s.code}</td><td>{s.name}</td><td>{s.co_count}</td><td><button className="danger" onClick={() => remove(s)}>Delete</button></td></tr>)}</tbody>
@@ -291,6 +331,8 @@ function Subjects({ subjects, reload }) {
 
 function Faculty({ faculty, subjects, reload }) {
   const [msg, setMsg] = useState(null);
+  const [bulkMsg, setBulkMsg] = useState(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [selectedSubs, setSelectedSubs] = useState([]);
 
@@ -307,6 +349,22 @@ function Faculty({ faculty, subjects, reload }) {
     const res = await api('/api/faculty', { method: 'POST', body: JSON.stringify(body) });
     setMsg(res.ok ? { type: 'ok', text: 'Faculty account created with assigned subjects. Share the password with them securely.' } : { type: 'err', text: res.data.error });
     if (res.ok) { e.target.reset(); reload(); }
+  }
+
+  async function submitBulk(e) {
+    e.preventDefault();
+    setBulkBusy(true); setBulkMsg(null);
+    const form = e.target;
+    const res = await api('/api/faculty/bulk', { method: 'POST', body: new FormData(form) });
+    setBulkBusy(false);
+    if (!res.ok) return setBulkMsg({ type: 'err', text: res.data.error, list: res.data.details });
+    setBulkMsg({
+      type: res.data.warnings?.length ? 'warn' : 'ok',
+      text: `Import complete: ${res.data.inserted} faculty added, ${res.data.skipped} skipped.`,
+      list: res.data.warnings,
+    });
+    form.reset();
+    reload();
   }
 
   function startEdit(u) {
@@ -355,6 +413,24 @@ function Faculty({ faculty, subjects, reload }) {
 
         <Msg m={msg} />
         <button>Create account</button>
+      </form>
+
+      <form className="card" onSubmit={submitBulk}>
+        <h2>Bulk import faculty</h2>
+        <p className="muted">
+          Upload an Excel (.xlsx) or CSV file with <strong>Faculty Name</strong>, <strong>Email</strong>, <strong>Temporary Password</strong>, and optional <strong>Assigned Subject Codes</strong> (comma-separated, e.g. <code>CAP1005, CAP1006</code>).{' '}
+          <a href="/faculty-template.xlsx" download>Download template (.xlsx)</a>
+        </p>
+        <div className="row" style={{ alignItems: 'flex-end' }}>
+          <div>
+            <label htmlFor="bulk_fac_file">Choose file (.xlsx or .csv)</label>
+            <input id="bulk_fac_file" name="file" type="file" required accept=".xlsx, .csv" />
+          </div>
+          <div>
+            <button disabled={bulkBusy}>{bulkBusy ? 'Importing…' : 'Upload & import faculty'}</button>
+          </div>
+        </div>
+        <Msg m={bulkMsg} />
       </form>
 
       {editingFaculty && (

@@ -47,8 +47,8 @@ In Vercel **Settings > Environment Variables**, ensure these variables are added
 
 ## First use
 
-1. Admin > **Subjects**: add the subject code, name and number of COs.
-2. Admin > **Faculty**: create faculty accounts and assign designated subject codes to each faculty user.
+1. Admin > **Subjects**: add subjects individually or use **Bulk import subjects** with the downloadable Excel/CSV template (`/subjects-template.xlsx`).
+2. Admin > **Faculty**: create faculty accounts individually or use **Bulk import faculty** (`/faculty-template.xlsx`) to upload multiple faculty and their assigned subject codes in one step.
 3. Admin > **Formats**: check or add paper formats (section, questions, marks, allowed BT levels, OR, optional exact mix such as `1:1,2:2,3:1`).
 4. Faculty log in and see only their assigned subjects. Faculty can upload question banks (.xlsx) regularly over time to grow the pool, but ready question papers (.docx) can only be submitted once (1 set per assigned subject).
 5. Admin > **Generate**: choose subject, format, source, number of sets and unlock time. Papers appear under **Papers** and can be downloaded as Word once unlocked.
