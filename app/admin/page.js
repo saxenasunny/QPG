@@ -126,6 +126,7 @@ function poolSize(uploads, code) {
 function Generate({ subjects, formats, uploads, reload }) {
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [scope, setScope] = useState('single'); // 'single' | 'program_sem' | 'school'
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedDegree, setSelectedDegree] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('');
@@ -182,7 +183,12 @@ function Generate({ subjects, formats, uploads, reload }) {
       ).sort((a, b) => (Number(a) || a) > (Number(b) || b) ? 1 : -1)
     : [];
 
-  // 5. Filtered Subjects matching all cascading criteria
+  // 5. Subjects matching School
+  const schoolSubjects = selectedDept
+    ? subjects.filter((s) => (s.department || 'SOES') === selectedDept)
+    : [];
+
+  // 6. Filtered Subjects matching all cascading criteria (School + Degree + Batch + Semester)
   const filteredSubjects = subjects.filter((s) => {
     if (selectedDept && (s.department || 'SOES') !== selectedDept) return false;
     if (selectedDegree && (s.degree || 'General') !== selectedDegree) return false;
@@ -193,6 +199,16 @@ function Generate({ subjects, formats, uploads, reload }) {
 
   const subj = subjects.find((s) => String(s.id) === String(subjectId));
 
+  // Determine list of subject IDs to generate based on active scope
+  const targetSubjects =
+    scope === 'school'
+      ? schoolSubjects
+      : scope === 'program_sem'
+      ? filteredSubjects
+      : subj
+      ? [subj]
+      : [];
+
   async function submit(e) {
     e.preventDefault();
     setBusy(true);
@@ -201,15 +217,58 @@ function Generate({ subjects, formats, uploads, reload }) {
     const body = Object.fromEntries(f.entries());
     body.allow_images = f.get('allow_images') === 'on';
     body.release_at = new Date(body.release_at).toISOString();
+
+    if (scope === 'school') {
+      if (!selectedDept) {
+        setBusy(false);
+        return setMsg({ type: 'err', text: 'Please select a School / Department.' });
+      }
+      if (schoolSubjects.length === 0) {
+        setBusy(false);
+        return setMsg({ type: 'err', text: `No subjects found under department ${selectedDept}.` });
+      }
+      body.subject_ids = schoolSubjects.map((s) => s.id);
+    } else if (scope === 'program_sem') {
+      if (!selectedDept || !selectedDegree || !selectedBatch || !selectedSem) {
+        setBusy(false);
+        return setMsg({ type: 'err', text: 'Please select School, Degree, Batch, and Semester to target all subjects in the program semester.' });
+      }
+      if (filteredSubjects.length === 0) {
+        setBusy(false);
+        return setMsg({ type: 'err', text: 'No subjects found matching the selected program & semester.' });
+      }
+      body.subject_ids = filteredSubjects.map((s) => s.id);
+    } else {
+      if (!subjectId) {
+        setBusy(false);
+        return setMsg({ type: 'err', text: 'Please select a subject.' });
+      }
+      body.subject_ids = [Number(subjectId)];
+    }
+
     const res = await api('/api/generate', { method: 'POST', body: JSON.stringify(body) });
     setBusy(false);
     if (!res.ok) return setMsg({ type: 'err', text: res.data.error });
+
+    const papers = res.data.papers || [];
+    const failures = res.data.failures || [];
+    let feedback = '';
+
+    if (papers.length === 1 && failures.length === 0) {
+      feedback = `Paper generated & sealed. It is locked with AES-256-GCM encryption and cannot be opened before ${fmtDate(res.data.release_at)}.`;
+    } else {
+      feedback = `Bulk generation complete: ${papers.length} paper(s) sealed successfully${failures.length > 0 ? `, ${failures.length} subject(s) skipped due to insufficient questions` : ''}. All sealed with AES-256-GCM until ${fmtDate(res.data.release_at)}.`;
+    }
+
+    const list = [
+      ...papers.map((p) => `✅ [${p.subject_code}] ${p.ref}${p.label ? ' (' + p.label + ')' : ''} &bull; Covers CO: ${p.coverage?.cos?.join(', ') || 'N/A'}`),
+      ...failures.map((f) => `⚠️ [${f.code}] ${f.name}: ${f.error}`),
+    ];
+
     setMsg({
-      type: 'ok',
-      text: `Paper generated & sealed. It is locked with AES-256-GCM encryption and cannot be opened before ${fmtDate(res.data.release_at)}.`,
-      list: res.data.papers.map(
-        (p) => `${p.ref}${p.label ? ' (' + p.label + ')' : ''} &bull; Covers Course Outcomes: CO ${p.coverage.cos.join(', ')}`
-      ),
+      type: papers.length > 0 ? 'ok' : 'err',
+      text: feedback,
+      list,
     });
     reload();
   }
@@ -220,8 +279,44 @@ function Generate({ subjects, formats, uploads, reload }) {
         <div>
           <h2>Generate &amp; Seal Question Paper</h2>
           <p className="muted">
-            Select the Department, Degree, Batch, and Semester to load designated subjects. The server algorithm seals the generated paper with AES-256-GCM encryption.
+            Generate and timelock question papers for individual subjects, an entire program semester, or all subjects across a school.
           </p>
+        </div>
+      </div>
+
+      {/* Generation Mode / Scope Switcher */}
+      <div style={{ marginBottom: '1.25rem', padding: '0.85rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem', color: '#1e293b' }}>
+          Generation Scope:
+        </div>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: scope === 'single' ? 600 : 400 }}>
+            <input
+              type="radio"
+              name="gen_scope"
+              checked={scope === 'single'}
+              onChange={() => setScope('single')}
+            />
+            <span>🎯 Single Subject</span>
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: scope === 'program_sem' ? 600 : 400 }}>
+            <input
+              type="radio"
+              name="gen_scope"
+              checked={scope === 'program_sem'}
+              onChange={() => setScope('program_sem')}
+            />
+            <span>📚 All Subjects in Program &amp; Semester</span>
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: scope === 'school' ? 600 : 400 }}>
+            <input
+              type="radio"
+              name="gen_scope"
+              checked={scope === 'school'}
+              onChange={() => setScope('school')}
+            />
+            <span>🏛️ All Subjects in Entire School / Dept</span>
+          </label>
         </div>
       </div>
 
@@ -231,6 +326,7 @@ function Generate({ subjects, formats, uploads, reload }) {
           <select
             id="g_dept"
             value={selectedDept}
+            required
             onChange={(e) => {
               const dept = e.target.value;
               setSelectedDept(dept);
@@ -249,108 +345,119 @@ function Generate({ subjects, formats, uploads, reload }) {
           </select>
         </div>
 
-        <div>
-          <label htmlFor="g_deg_select">2. Degree Programme</label>
-          <select
-            id="g_deg_select"
-            value={selectedDegree}
-            disabled={!selectedDept}
-            onChange={(e) => {
-              const deg = e.target.value;
-              setSelectedDegree(deg);
-              setSelectedBatch('');
-              setSelectedSem('');
-              setSubjectId('');
-              const el = document.getElementById('g_degree');
-              if (el) el.value = deg;
-            }}
-          >
-            <option value="">
-              {!selectedDept ? 'Select School first' : 'Choose Degree Programme'}
-            </option>
-            {availableDegrees.map((deg) => (
-              <option key={deg} value={deg}>
-                {deg}
+        {scope !== 'school' && (
+          <div>
+            <label htmlFor="g_deg_select">2. Degree Programme</label>
+            <select
+              id="g_deg_select"
+              value={selectedDegree}
+              disabled={!selectedDept}
+              required={scope === 'program_sem'}
+              onChange={(e) => {
+                const deg = e.target.value;
+                setSelectedDegree(deg);
+                setSelectedBatch('');
+                setSelectedSem('');
+                setSubjectId('');
+                const el = document.getElementById('g_degree');
+                if (el) el.value = deg;
+              }}
+            >
+              <option value="">
+                {!selectedDept ? 'Select School first' : 'Choose Degree Programme'}
               </option>
-            ))}
-          </select>
-        </div>
+              {availableDegrees.map((deg) => (
+                <option key={deg} value={deg}>
+                  {deg}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-        <div>
-          <label htmlFor="g_batch_select">3. Batch Year</label>
-          <select
-            id="g_batch_select"
-            value={selectedBatch}
-            disabled={!selectedDegree}
-            onChange={(e) => {
-              setSelectedBatch(e.target.value);
-              setSelectedSem('');
-              setSubjectId('');
-            }}
-          >
-            <option value="">
-              {!selectedDegree ? 'Select Degree first' : 'Choose Batch Year'}
-            </option>
-            {availableBatches.map((b) => (
-              <option key={b} value={b}>
-                Batch {b}
+        {scope !== 'school' && (
+          <div>
+            <label htmlFor="g_batch_select">3. Batch Year</label>
+            <select
+              id="g_batch_select"
+              value={selectedBatch}
+              disabled={!selectedDegree}
+              required={scope === 'program_sem'}
+              onChange={(e) => {
+                setSelectedBatch(e.target.value);
+                setSelectedSem('');
+                setSubjectId('');
+              }}
+            >
+              <option value="">
+                {!selectedDegree ? 'Select Degree first' : 'Choose Batch Year'}
               </option>
-            ))}
-          </select>
-        </div>
+              {availableBatches.map((b) => (
+                <option key={b} value={b}>
+                  Batch {b}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-        <div>
-          <label htmlFor="g_sem_select">4. Semester</label>
-          <select
-            id="g_sem_select"
-            value={selectedSem}
-            disabled={!selectedBatch}
-            onChange={(e) => {
-              const sem = e.target.value;
-              setSelectedSem(sem);
-              setSubjectId('');
-              const el = document.getElementById('g_sem');
-              if (el) el.value = sem.startsWith('Sem') ? sem : `Semester ${sem}`;
-            }}
-          >
-            <option value="">
-              {!selectedBatch ? 'Select Batch first' : 'Choose Semester'}
-            </option>
-            {availableSemesters.map((sem) => (
-              <option key={sem} value={sem}>
-                Semester {sem}
+        {scope !== 'school' && (
+          <div>
+            <label htmlFor="g_sem_select">4. Semester</label>
+            <select
+              id="g_sem_select"
+              value={selectedSem}
+              disabled={!selectedBatch}
+              required={scope === 'program_sem'}
+              onChange={(e) => {
+                const sem = e.target.value;
+                setSelectedSem(sem);
+                setSubjectId('');
+                const el = document.getElementById('g_sem');
+                if (el) el.value = sem.startsWith('Sem') ? sem : `Semester ${sem}`;
+              }}
+            >
+              <option value="">
+                {!selectedBatch ? 'Select Batch first' : 'Choose Semester'}
               </option>
-            ))}
-          </select>
-        </div>
+              {availableSemesters.map((sem) => (
+                <option key={sem} value={sem}>
+                  Semester {sem}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-        <div>
-          <label htmlFor="g_subject">5. Subject Code &amp; Title</label>
-          <select
-            id="g_subject"
-            name="subject_id"
-            required
-            value={subjectId}
-            disabled={!selectedSem}
-            onChange={(e) => setSubjectId(e.target.value)}
-          >
-            <option value="" disabled>
-              {!selectedSem ? 'Select Semester first' : 'Choose course subject'}
-            </option>
-            {filteredSubjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.code} &ndash; {s.name}
+        {scope === 'single' && (
+          <div>
+            <label htmlFor="g_subject">5. Subject Code &amp; Title</label>
+            <select
+              id="g_subject"
+              name="subject_id"
+              required={scope === 'single'}
+              value={subjectId}
+              disabled={!selectedSem}
+              onChange={(e) => setSubjectId(e.target.value)}
+            >
+              <option value="" disabled>
+                {!selectedSem ? 'Select Semester first' : 'Choose course subject'}
               </option>
-            ))}
-          </select>
-          {subj && (
-            <div style={{ marginTop: '0.4rem' }}>
-              <span className="chip primary">
-                📊 {poolSize(uploads, subj.code)} questions in pool
-              </span>
-            </div>
-          )}
-        </div>
+              {filteredSubjects.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.code} &ndash; {s.name}
+                </option>
+              ))}
+            </select>
+            {subj && (
+              <div style={{ marginTop: '0.4rem' }}>
+                <span className="chip primary">
+                  📊 {poolSize(uploads, subj.code)} questions in pool
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <label htmlFor="g_format">Exam Paper Format</label>
@@ -397,16 +504,48 @@ function Generate({ subjects, formats, uploads, reload }) {
           />
         </div>
 
-        <div>
-          <label htmlFor="g_degree">Degree Programme</label>
-          <input id="g_degree" name="degree" type="text" placeholder="e.g. BCA / MCA / B.Tech" />
-        </div>
+        {scope === 'single' && (
+          <div>
+            <label htmlFor="g_degree">Degree Programme (on Paper)</label>
+            <input id="g_degree" name="degree" type="text" placeholder="e.g. BCA / MCA / B.Tech" />
+          </div>
+        )}
 
-        <div>
-          <label htmlFor="g_sem">Semester</label>
-          <input id="g_sem" name="semester" type="text" placeholder="e.g. I, III, V" />
-        </div>
+        {scope === 'single' && (
+          <div>
+            <label htmlFor="g_sem">Semester (on Paper)</label>
+            <input id="g_sem" name="semester" type="text" placeholder="e.g. I, III, V" />
+          </div>
+        )}
       </div>
+
+      {/* Target subjects preview for bulk scope */}
+      {scope !== 'single' && targetSubjects.length > 0 && (
+        <div style={{ marginTop: '1rem', padding: '0.85rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+          <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#166534', marginBottom: '0.4rem' }}>
+            📋 Targets for Bulk Generation ({targetSubjects.length} subjects found):
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {targetSubjects.map((s) => {
+              const qCount = poolSize(uploads, s.code);
+              return (
+                <span
+                  key={s.id}
+                  className="chip"
+                  style={{
+                    fontSize: '0.78rem',
+                    background: qCount > 0 ? '#dcfce7' : '#fee2e2',
+                    color: qCount > 0 ? '#15803d' : '#b91c1c',
+                    border: `1px solid ${qCount > 0 ? '#86efac' : '#fca5a5'}`,
+                  }}
+                >
+                  <strong>{s.code}</strong>: {s.name} ({qCount} qs)
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={{ margin: '0.85rem 0 1.25rem' }}>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, cursor: 'pointer' }}>
@@ -417,8 +556,13 @@ function Generate({ subjects, formats, uploads, reload }) {
 
       <Msg m={msg} />
 
-      <button disabled={busy} style={{ minWidth: 180 }}>
-        <LockIcon size={16} /> {busy ? 'Generating & Sealing…' : 'Build & Seal Question Paper'}
+      <button disabled={busy || (scope !== 'single' && targetSubjects.length === 0)} style={{ minWidth: 200 }}>
+        <LockIcon size={16} />{' '}
+        {busy
+          ? 'Generating & Sealing…'
+          : scope === 'single'
+          ? 'Build & Seal Question Paper'
+          : `Build & Seal All (${targetSubjects.length}) Papers`}
       </button>
     </form>
   );
