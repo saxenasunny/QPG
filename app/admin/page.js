@@ -126,7 +126,71 @@ function poolSize(uploads, code) {
 function Generate({ subjects, formats, uploads, reload }) {
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [selectedDept, setSelectedDept] = useState('');
+  const [selectedDegree, setSelectedDegree] = useState('');
+  const [selectedBatch, setSelectedBatch] = useState('');
+  const [selectedSem, setSelectedSem] = useState('');
   const [subjectId, setSubjectId] = useState('');
+
+  // 1. Unique Departments / Schools from available subjects
+  const departments = Array.from(
+    new Set(subjects.map((s) => s.department || 'SOES').filter(Boolean))
+  ).sort();
+
+  // 2. Degree programs for chosen School
+  const availableDegrees = selectedDept
+    ? Array.from(
+        new Set(
+          subjects
+            .filter((s) => (s.department || 'SOES') === selectedDept)
+            .map((s) => s.degree || 'General')
+            .filter(Boolean)
+        )
+      ).sort()
+    : [];
+
+  // 3. Batches for chosen School + Degree
+  const availableBatches = (selectedDept && selectedDegree)
+    ? Array.from(
+        new Set(
+          subjects
+            .filter(
+              (s) =>
+                (s.department || 'SOES') === selectedDept &&
+                (s.degree || 'General') === selectedDegree
+            )
+            .map((s) => s.batch || '2024')
+            .filter(Boolean)
+        )
+      ).sort()
+    : [];
+
+  // 4. Semesters for chosen School + Degree + Batch
+  const availableSemesters = (selectedDept && selectedDegree && selectedBatch)
+    ? Array.from(
+        new Set(
+          subjects
+            .filter(
+              (s) =>
+                (s.department || 'SOES') === selectedDept &&
+                (s.degree || 'General') === selectedDegree &&
+                (s.batch || '2024') === selectedBatch
+            )
+            .map((s) => String(s.semester || '1'))
+            .filter(Boolean)
+        )
+      ).sort((a, b) => (Number(a) || a) > (Number(b) || b) ? 1 : -1)
+    : [];
+
+  // 5. Filtered Subjects matching all cascading criteria
+  const filteredSubjects = subjects.filter((s) => {
+    if (selectedDept && (s.department || 'SOES') !== selectedDept) return false;
+    if (selectedDegree && (s.degree || 'General') !== selectedDegree) return false;
+    if (selectedBatch && (s.batch || '2024') !== selectedBatch) return false;
+    if (selectedSem && String(s.semester || '1') !== String(selectedSem)) return false;
+    return true;
+  });
+
   const subj = subjects.find((s) => String(s.id) === String(subjectId));
 
   async function submit(e) {
@@ -156,23 +220,124 @@ function Generate({ subjects, formats, uploads, reload }) {
         <div>
           <h2>Generate &amp; Seal Question Paper</h2>
           <p className="muted">
-            The server algorithm selects questions with weighted randomness, balances Course Outcomes, and seals the result under AES-256-GCM encryption.
+            Select the Department, Degree, Batch, and Semester to load designated subjects. The server algorithm seals the generated paper with AES-256-GCM encryption.
           </p>
         </div>
       </div>
 
       <div className="form-grid">
         <div>
-          <label htmlFor="g_subject">Subject Code &amp; Title</label>
+          <label htmlFor="g_dept">1. School / Department</label>
+          <select
+            id="g_dept"
+            value={selectedDept}
+            onChange={(e) => {
+              const dept = e.target.value;
+              setSelectedDept(dept);
+              setSelectedDegree('');
+              setSelectedBatch('');
+              setSelectedSem('');
+              setSubjectId('');
+            }}
+          >
+            <option value="">Choose School / Department</option>
+            {departments.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="g_deg_select">2. Degree Programme</label>
+          <select
+            id="g_deg_select"
+            value={selectedDegree}
+            disabled={!selectedDept}
+            onChange={(e) => {
+              const deg = e.target.value;
+              setSelectedDegree(deg);
+              setSelectedBatch('');
+              setSelectedSem('');
+              setSubjectId('');
+              const el = document.getElementById('g_degree');
+              if (el) el.value = deg;
+            }}
+          >
+            <option value="">
+              {!selectedDept ? 'Select School first' : 'Choose Degree Programme'}
+            </option>
+            {availableDegrees.map((deg) => (
+              <option key={deg} value={deg}>
+                {deg}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="g_batch_select">3. Academic Batch</label>
+          <select
+            id="g_batch_select"
+            value={selectedBatch}
+            disabled={!selectedDegree}
+            onChange={(e) => {
+              setSelectedBatch(e.target.value);
+              setSelectedSem('');
+              setSubjectId('');
+            }}
+          >
+            <option value="">
+              {!selectedDegree ? 'Select Degree first' : 'Choose Batch'}
+            </option>
+            {availableBatches.map((b) => (
+              <option key={b} value={b}>
+                Batch {b}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="g_sem_select">4. Semester</label>
+          <select
+            id="g_sem_select"
+            value={selectedSem}
+            disabled={!selectedBatch}
+            onChange={(e) => {
+              const sem = e.target.value;
+              setSelectedSem(sem);
+              setSubjectId('');
+              const el = document.getElementById('g_sem');
+              if (el) el.value = sem.startsWith('Sem') ? sem : `Semester ${sem}`;
+            }}
+          >
+            <option value="">
+              {!selectedBatch ? 'Select Batch first' : 'Choose Semester'}
+            </option>
+            {availableSemesters.map((sem) => (
+              <option key={sem} value={sem}>
+                Semester {sem}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="g_subject">5. Subject Code &amp; Title</label>
           <select
             id="g_subject"
             name="subject_id"
             required
             value={subjectId}
+            disabled={!selectedSem}
             onChange={(e) => setSubjectId(e.target.value)}
           >
-            <option value="" disabled>Select course subject</option>
-            {subjects.map((s) => (
+            <option value="" disabled>
+              {!selectedSem ? 'Select Semester first' : 'Choose course subject'}
+            </option>
+            {filteredSubjects.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.code} &ndash; {s.name}
               </option>
@@ -615,6 +780,56 @@ function Subjects({ subjects, reload }) {
           <form onSubmit={submit}>
             <div className="form-grid">
               <div>
+                <label htmlFor="s_dept">Department / School</label>
+                <input
+                  id="s_dept"
+                  name="department"
+                  type="text"
+                  required
+                  list="dept_suggestions"
+                  placeholder="e.g. SOES, SOL, SOHAS"
+                />
+                <datalist id="dept_suggestions">
+                  <option value="SOES">SOES (School of Engineering & Sciences)</option>
+                  <option value="SOL">SOL (School of Law)</option>
+                  <option value="SOHAS">SOHAS (School of Humanities & Applied Sciences)</option>
+                  <option value="SOB">SOB (School of Business)</option>
+                  <option value="SOMC">SOMC (School of Media & Communication)</option>
+                  <option value="SOED">SOED (School of Education)</option>
+                  <option value="SOP">SOP (School of Pharmaceutical Sciences)</option>
+                </datalist>
+              </div>
+              <div>
+                <label htmlFor="s_deg">Degree Programme</label>
+                <input
+                  id="s_deg"
+                  name="degree"
+                  type="text"
+                  required
+                  placeholder="e.g. B.Tech CSE, BCA, BA LLB"
+                />
+              </div>
+              <div>
+                <label htmlFor="s_batch">Academic Batch</label>
+                <input
+                  id="s_batch"
+                  name="batch"
+                  type="text"
+                  required
+                  placeholder="e.g. 2023-2027 or 2024"
+                />
+              </div>
+              <div>
+                <label htmlFor="s_sem">Semester</label>
+                <input
+                  id="s_sem"
+                  name="semester"
+                  type="text"
+                  required
+                  placeholder="e.g. 1, 2, 3, 4, 5, 6..."
+                />
+              </div>
+              <div>
                 <label htmlFor="s_code">Subject Code</label>
                 <input id="s_code" name="code" type="text" required placeholder="e.g. CAP1005" />
               </div>
@@ -623,7 +838,7 @@ function Subjects({ subjects, reload }) {
                 <input id="s_name" name="name" type="text" required placeholder="e.g. Programming in C" />
               </div>
               <div>
-                <label htmlFor="s_co">Number of Course Outcomes (COs)</label>
+                <label htmlFor="s_co">Course Outcomes (COs)</label>
                 <input id="s_co" name="co_count" type="number" min="1" max="10" defaultValue="5" />
               </div>
             </div>
@@ -634,11 +849,16 @@ function Subjects({ subjects, reload }) {
           <form onSubmit={submitBulk}>
             <div className="card-header-flex">
               <p className="muted">
-                First row must contain: <code>Subject Code</code>, <code>Subject Name</code>, and <code>CO Count</code>.
+                First row must contain: <code>Department</code>, <code>Degree Program</code>, <code>Batch</code>, <code>Semester</code>, <code>Subject Code</code>, <code>Subject Name</code>, and <code>CO Count</code>.
               </p>
-              <a href="/subjects-template.xlsx" download className="btn btn-secondary btn-pill">
-                <DownloadIcon size={13} /> Download Template (.xlsx)
-              </a>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <a href="/subjects-template.xlsx" download className="btn btn-secondary btn-pill">
+                  <DownloadIcon size={13} /> Excel Template (.xlsx)
+                </a>
+                <a href="/subjects-template.csv" download className="btn btn-secondary btn-pill">
+                  <DownloadIcon size={13} /> CSV Template (.csv)
+                </a>
+              </div>
             </div>
             <div className="dropzone-box">
               <label htmlFor="bulk_sub_file" style={{ cursor: 'pointer' }}>
@@ -674,19 +894,31 @@ function Subjects({ subjects, reload }) {
             <table>
               <thead>
                 <tr>
-                  <th>Course Code</th>
-                  <th>Subject Name</th>
-                  <th>Course Outcomes</th>
+                  <th>School / Department</th>
+                  <th>Degree Programme</th>
+                  <th>Batch &amp; Sem</th>
+                  <th>Course Code &amp; Title</th>
+                  <th>CO Count</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {subjects.map((s) => (
                   <tr key={s.id}>
-                    <td><strong>{s.code}</strong></td>
-                    <td>{s.name}</td>
                     <td>
-                      <span className="chip primary">{s.co_count} COs</span>
+                      <span className="chip primary" style={{ fontWeight: 700 }}>
+                        {s.department || 'SOES'}
+                      </span>
+                    </td>
+                    <td><strong>{s.degree || 'General'}</strong></td>
+                    <td>
+                      <span className="chip">
+                        {s.batch || '—'} &bull; Sem {s.semester || '—'}
+                      </span>
+                    </td>
+                    <td><strong>{s.code}</strong> &ndash; {s.name}</td>
+                    <td>
+                      <span className="chip open">{s.co_count} COs</span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <button className="btn-danger btn-pill" onClick={() => remove(s)}>
@@ -835,7 +1067,10 @@ function Faculty({ faculty, subjects, reload }) {
                   }}
                 >
                   <input type="checkbox" name="subject_ids" value={s.id} />
-                  <strong>{s.code}</strong> &ndash; {s.name}
+                  <strong>{s.code}</strong> &ndash; {s.name}{' '}
+                  <span className="muted" style={{ fontSize: '0.75rem' }}>
+                    ({s.department || 'SOES'} &bull; {s.degree || ''} &bull; Sem {s.semester || ''})
+                  </span>
                 </label>
               ))}
               {subjects.length === 0 && <span className="muted">No subjects available yet. Add subjects first.</span>}
@@ -910,7 +1145,7 @@ function Faculty({ faculty, subjects, reload }) {
                       else setSelectedSubs(selectedSubs.filter((id) => id !== s.id));
                     }}
                   />
-                  <span>{s.code}</span> &ndash; <span className="muted">{s.name}</span>
+                  <span>{s.code}</span> &ndash; <span className="muted">{s.name} ({s.department || 'SOES'} &bull; {s.degree || ''} &bull; Sem {s.semester || ''})</span>
                 </label>
               );
             })}

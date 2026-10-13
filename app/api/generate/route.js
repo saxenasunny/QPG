@@ -42,10 +42,18 @@ export async function POST(req) {
     const ref = newPaperRef();
     const label = versions > 1 ? `Set ${'ABC'[i]}` : '';
     const meta = {
-      institute: process.env.INSTITUTE_NAME || '', examTitle: b.exam_title || 'End Term Examination',
-      courseCode: subj.code, courseTitle: subj.name, degree: b.degree || fmt.config.degree || '',
-      semester: b.semester || '', time: fmt.config.duration || '3 Hrs', maxMarks: fmt.config.total_marks,
-      instructions: fmt.config.instructions || 'Attempt all questions.', label,
+      institute: process.env.INSTITUTE_NAME || '',
+      department: subj.department || '',
+      batch: subj.batch || '',
+      examTitle: b.exam_title || 'End Term Examination',
+      courseCode: subj.code,
+      courseTitle: subj.name,
+      degree: b.degree || subj.degree || fmt.config.degree || '',
+      semester: b.semester || subj.semester || '',
+      time: fmt.config.duration || '3 Hrs',
+      maxMarks: fmt.config.total_marks,
+      instructions: fmt.config.instructions || 'Attempt all questions.',
+      label,
     };
     const payload = encryptJSON({ meta, paper: { sections: p.sections }, ref });
     const ins = await q(

@@ -150,7 +150,7 @@ export default function Faculty() {
                   const disabled = kind === 'paper' && hasPaper;
                   return (
                     <option key={s.id} value={s.id} disabled={disabled}>
-                      {s.code} &ndash; {s.name}{' '}
+                      [{s.department || 'SOES'} &bull; {s.degree || 'General'} &bull; Sem {s.semester || '1'}] {s.code} &ndash; {s.name}{' '}
                       {kind === 'paper'
                         ? (hasPaper ? '✕ (Paper already submitted)' : '✓ (Paper slot open)')
                         : `(${banks} bank${banks === 1 ? '' : 's'} added)`}

@@ -28,16 +28,26 @@ export async function POST(req) {
 
   for (const item of items) {
     try {
-      const res = await q(
-        'insert into subjects(code, name, co_count) values($1, $2, $3) on conflict (code) do nothing',
-        [item.code, item.name, item.co_count]
+      const existing = await q(
+        `select id from subjects 
+          where upper(code) = $1 
+            and upper(department) = $2 
+            and upper(degree) = upper($3) 
+            and upper(batch) = upper($4) 
+            and upper(semester) = upper($5)`,
+        [item.code, item.department, item.degree, item.batch, item.semester]
       );
-      if (res.rowCount > 0) {
-        inserted++;
-      } else {
+      if (existing.rowCount > 0) {
         skipped++;
-        warnings.push(`Subject ${item.code} already exists (skipped).`);
+        warnings.push(`Subject ${item.code} (${item.department} / ${item.degree} / ${item.batch} / Sem ${item.semester}) already exists (skipped).`);
+        continue;
       }
+
+      await q(
+        'insert into subjects(department, degree, batch, semester, code, name, co_count) values($1, $2, $3, $4, $5, $6, $7)',
+        [item.department, item.degree, item.batch, item.semester, item.code, item.name, item.co_count]
+      );
+      inserted++;
     } catch (e) {
       warnings.push(`Subject ${item.code}: ${e.message}`);
     }
