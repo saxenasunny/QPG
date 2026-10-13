@@ -277,7 +277,7 @@ function Generate({ subjects, formats, uploads, reload }) {
         </div>
 
         <div>
-          <label htmlFor="g_batch_select">3. Academic Batch</label>
+          <label htmlFor="g_batch_select">3. Batch Year</label>
           <select
             id="g_batch_select"
             value={selectedBatch}
@@ -289,7 +289,7 @@ function Generate({ subjects, formats, uploads, reload }) {
             }}
           >
             <option value="">
-              {!selectedDegree ? 'Select Degree first' : 'Choose Batch'}
+              {!selectedDegree ? 'Select Degree first' : 'Choose Batch Year'}
             </option>
             {availableBatches.map((b) => (
               <option key={b} value={b}>
@@ -810,13 +810,16 @@ function Subjects({ subjects, reload }) {
                 />
               </div>
               <div>
-                <label htmlFor="s_batch">Academic Batch</label>
+                <label htmlFor="s_batch">Batch Year</label>
                 <input
                   id="s_batch"
                   name="batch"
-                  type="text"
+                  type="number"
+                  min="2000"
+                  max="2099"
+                  step="1"
                   required
-                  placeholder="e.g. 2023-2027 or 2024"
+                  placeholder="e.g. 2023"
                 />
               </div>
               <div>
@@ -849,7 +852,7 @@ function Subjects({ subjects, reload }) {
           <form onSubmit={submitBulk}>
             <div className="card-header-flex">
               <p className="muted">
-                First row must contain: <code>Department</code>, <code>Degree Program</code>, <code>Batch</code>, <code>Semester</code>, <code>Subject Code</code>, <code>Subject Name</code>, and <code>CO Count</code>.
+                First row must contain: <code>Department</code>, <code>Degree Program</code>, <code>Batch Year</code>, <code>Semester</code>, <code>Subject Code</code>, <code>Subject Name</code>, and <code>CO Count</code>.
               </p>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <a href="/subjects-template.xlsx" download className="btn btn-secondary btn-pill">
@@ -896,7 +899,7 @@ function Subjects({ subjects, reload }) {
                 <tr>
                   <th>School / Department</th>
                   <th>Degree Programme</th>
-                  <th>Batch &amp; Sem</th>
+                  <th>Batch Year &amp; Sem</th>
                   <th>Course Code &amp; Title</th>
                   <th>CO Count</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>

@@ -30,7 +30,13 @@ export async function POST(req) {
   const b = await req.json();
   const department = String(b.department || '').trim().toUpperCase() || 'SOES';
   const degree = String(b.degree || '').trim() || 'General';
-  const batch = String(b.batch || '').trim() || '2024';
+  let batch = String(b.batch || '').trim() || '2024';
+  const matchYear = batch.match(/\b(20\d{2}|19\d{2})\b/);
+  if (matchYear) {
+    batch = matchYear[1];
+  } else {
+    batch = batch.slice(0, 4);
+  }
   const semester = String(b.semester || '').trim() || '1';
   const code = String(b.code || '').trim().toUpperCase();
   const name = String(b.name || '').trim();
