@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ShieldIcon } from '@/lib/client';
 
 export default function Login() {
   const router = useRouter();
@@ -37,17 +38,61 @@ export default function Login() {
   }
 
   return (
-    <main className="login">
-      <h1>Question Paper Generator</h1>
-      <p className="muted">Sign in with the account your exam cell created for you.</p>
-      <form className="card" onSubmit={submit}>
-        <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="username" required />
-        <label htmlFor="password">Password</label>
-        <input id="password" name="password" type="password" autoComplete="current-password" required />
-        {err && <div className="msg err" role="alert">{err}</div>}
-        <p><button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button></p>
-      </form>
-    </main>
+    <div className="login-container">
+      <main className="login-card">
+        <div className="login-header">
+          <div className="shield-badge">
+            <ShieldIcon size={26} color="#ffffff" />
+          </div>
+          <h1>Exam Cell Portal</h1>
+          <p>Confidential question paper generation and sealed delivery system</p>
+        </div>
+
+        <form onSubmit={submit}>
+          <div style={{ marginBottom: '1.1rem' }}>
+            <label htmlFor="email">Email address</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="username"
+              placeholder="e.g. admin@college.edu"
+              required
+            />
+          </div>
+
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter your account password"
+              required
+            />
+          </div>
+
+          {err && (
+            <div className="msg-banner err" role="alert" style={{ marginBottom: '1.25rem' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <div>{err}</div>
+            </div>
+          )}
+
+          <button className="btn-login-submit" disabled={busy}>
+            {busy ? 'Authenticating…' : 'Sign in to Portal'}
+          </button>
+        </form>
+
+        <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.76rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem' }}>
+          🔒 AES-256-GCM Timelocked Encryption &bull; Zero-Knowledge Paper Setting
+        </div>
+      </main>
+    </div>
   );
 }
