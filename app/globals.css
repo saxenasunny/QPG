@@ -298,46 +298,144 @@ a:hover {
 /* Forms and Inputs */
 label {
   display: block;
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   font-weight: 600;
   color: var(--slate-700);
-  margin-bottom: 0.35rem;
-  text-transform: capitalize;
+  margin-bottom: 0.4rem;
+  letter-spacing: -0.01em;
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="datetime-local"],
+/* Master styling for text fields, dropdowns, dates, numbers, textareas */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
 select,
 textarea {
+  display: block;
   width: 100%;
-  padding: 0.65rem 0.85rem;
+  height: 42px;
+  padding: 0 0.85rem;
   border: 1px solid var(--slate-300);
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.89rem;
+  font-weight: 500;
   color: var(--slate-900);
   background-color: #ffffff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.04);
+  line-height: normal;
+  box-sizing: border-box;
+}
+
+/* Custom modern SVG arrow for Select Dropdowns */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+/* Multi-line Textarea */
+textarea {
+  height: auto;
+  min-height: 84px;
+  padding: 0.65rem 0.85rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* Unified Focus Ring */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
+}
+
+/* Subtle Hover */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]):hover,
+select:hover,
+textarea:hover {
+  border-color: var(--slate-400);
+}
+
+/* Placeholder & Disabled States */
+input::placeholder, textarea::placeholder {
+  color: var(--slate-400);
+  font-weight: 400;
+}
+
+input:disabled, select:disabled, textarea:disabled {
+  background-color: var(--slate-100);
+  color: var(--slate-400);
+  border-color: var(--slate-200);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+/* Datetime-local picker calendar icon */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.15s ease;
+  padding: 2px;
+}
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* File Upload Controls */
+input[type="file"] {
+  height: auto;
+  min-height: 42px;
+  padding: 0.35rem 0.65rem;
+  border: 1px dashed var(--slate-300);
+  border-radius: 8px;
+  background-color: var(--slate-50);
+  font-size: 0.85rem;
+  color: var(--slate-600);
+  cursor: pointer;
+  line-height: normal;
+}
+input[type="file"]::file-selector-button {
+  background: #ffffff;
+  color: var(--slate-800);
+  border: 1px solid var(--slate-300);
+  border-radius: 6px;
+  padding: 0.35rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-right: 0.75rem;
+  cursor: pointer;
   transition: all 0.15s ease;
   box-shadow: var(--shadow-xs);
 }
-
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+input[type="file"]::file-selector-button:hover {
+  background: var(--slate-100);
+  border-color: var(--slate-400);
 }
 
-input::placeholder, textarea::placeholder {
-  color: var(--slate-400);
+/* Checkboxes and Radios */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--primary);
+  width: 1.05rem;
+  height: 1.05rem;
+  cursor: pointer;
+  vertical-align: middle;
 }
 
 .form-grid {
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1.15rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   margin-bottom: 1rem;
 }
 
@@ -397,8 +495,9 @@ button, .btn {
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 600;
-  padding: 0.62rem 1.15rem;
-  border-radius: var(--radius-sm);
+  min-height: 42px;
+  padding: 0 1.25rem;
+  border-radius: 8px;
   border: 1px solid transparent;
   cursor: pointer;
   display: inline-flex;
@@ -409,6 +508,8 @@ button, .btn {
   background: var(--primary);
   color: #ffffff;
   box-shadow: var(--shadow-xs);
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 
 button:hover, .btn:hover {
@@ -451,8 +552,10 @@ button.btn-danger:hover, button.danger:hover {
 }
 
 .btn-pill {
+  min-height: 32px;
+  height: 32px;
   border-radius: var(--radius-full);
-  padding: 0.4rem 0.9rem;
+  padding: 0 0.85rem;
   font-size: 0.8rem;
 }
 
@@ -654,11 +757,16 @@ tbody tr:hover {
   margin: 0;
 }
 
+.login-card input {
+  height: 44px;
+  border-radius: 8px;
+}
+
 .btn-login-submit {
   width: 100%;
-  padding: 0.75rem;
+  height: 44px;
   font-size: 0.95rem;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   margin-top: 0.5rem;
   background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);

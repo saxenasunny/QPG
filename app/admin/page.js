@@ -227,18 +227,19 @@ function Generate({ subjects, formats, uploads, reload }) {
           <input
             id="g_title"
             name="exam_title"
+            type="text"
             defaultValue="End Term Examination – December 2026"
           />
         </div>
 
         <div>
           <label htmlFor="g_degree">Degree Programme</label>
-          <input id="g_degree" name="degree" placeholder="e.g. BCA / MCA / B.Tech" />
+          <input id="g_degree" name="degree" type="text" placeholder="e.g. BCA / MCA / B.Tech" />
         </div>
 
         <div>
           <label htmlFor="g_sem">Semester</label>
-          <input id="g_sem" name="semester" placeholder="e.g. I, III, V" />
+          <input id="g_sem" name="semester" type="text" placeholder="e.g. I, III, V" />
         </div>
       </div>
 
@@ -439,15 +440,15 @@ function Formats({ formats, reload }) {
         <div className="form-grid">
           <div>
             <label htmlFor="f_name">Format Name</label>
-            <input id="f_name" name="name" required placeholder="e.g. ETE-60 (BCA/MCA)" />
+            <input id="f_name" name="name" type="text" required placeholder="e.g. ETE-60 (BCA/MCA)" />
           </div>
           <div>
             <label htmlFor="f_dur">Exam Duration</label>
-            <input id="f_dur" name="duration" defaultValue="3 Hrs" />
+            <input id="f_dur" name="duration" type="text" defaultValue="3 Hrs" />
           </div>
           <div>
             <label htmlFor="f_deg">Degree Programme</label>
-            <input id="f_deg" name="degree" placeholder="e.g. BCA/MCA (optional)" />
+            <input id="f_deg" name="degree" type="text" placeholder="e.g. BCA/MCA (optional)" />
           </div>
         </div>
 
@@ -461,7 +462,7 @@ function Formats({ formats, reload }) {
           <div className="sec-row" key={i}>
             <div>
               <label>Section</label>
-              <input value={s.name} onChange={(e) => set(i, 'name', e.target.value)} placeholder="A" />
+              <input type="text" value={s.name} onChange={(e) => set(i, 'name', e.target.value)} placeholder="A" />
             </div>
             <div>
               <label>Questions</label>
@@ -473,13 +474,13 @@ function Formats({ formats, reload }) {
             </div>
             <div>
               <label>BT Levels (1–6)</label>
-              <input value={s.levels} onChange={(e) => set(i, 'levels', e.target.value)} placeholder="1,2,3" />
+              <input type="text" value={s.levels} onChange={(e) => set(i, 'levels', e.target.value)} placeholder="1,2,3" />
             </div>
             <div>
               <label>Exact Mix (optional)</label>
-              <input value={s.mix} onChange={(e) => set(i, 'mix', e.target.value)} placeholder="1:1,2:2,3:1" />
+              <input type="text" value={s.mix} onChange={(e) => set(i, 'mix', e.target.value)} placeholder="1:1,2:2,3:1" />
             </div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', height: 42 }}>
               <label style={{ margin: 0, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <input type="checkbox" checked={s.has_or} onChange={(e) => set(i, 'has_or', e.target.checked)} />
                 OR
@@ -490,7 +491,7 @@ function Formats({ formats, reload }) {
                   className="btn-danger btn-pill"
                   onClick={() => setSecs(secs.filter((_, j) => j !== i))}
                   aria-label={`Remove section ${s.name}`}
-                  style={{ padding: '0.3rem 0.6rem' }}
+                  style={{ padding: '0 0.65rem' }}
                 >
                   &times;
                 </button>
@@ -615,11 +616,11 @@ function Subjects({ subjects, reload }) {
             <div className="form-grid">
               <div>
                 <label htmlFor="s_code">Subject Code</label>
-                <input id="s_code" name="code" required placeholder="e.g. CAP1005" />
+                <input id="s_code" name="code" type="text" required placeholder="e.g. CAP1005" />
               </div>
               <div>
                 <label htmlFor="s_name">Subject Name</label>
-                <input id="s_name" name="name" required placeholder="e.g. Programming in C" />
+                <input id="s_name" name="name" type="text" required placeholder="e.g. Programming in C" />
               </div>
               <div>
                 <label htmlFor="s_co">Number of Course Outcomes (COs)</label>
@@ -803,7 +804,7 @@ function Faculty({ faculty, subjects, reload }) {
             <div className="form-grid">
               <div>
                 <label htmlFor="u_name">Full Name</label>
-                <input id="u_name" name="name" required placeholder="Dr. Alan Turing" />
+                <input id="u_name" name="name" type="text" required placeholder="Dr. Alan Turing" />
               </div>
               <div>
                 <label htmlFor="u_email">Email Address</label>
